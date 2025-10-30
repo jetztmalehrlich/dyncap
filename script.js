@@ -106,10 +106,10 @@ if (logo) {
       }
       
       const normalizedDistance = distance / maxDistance;
-      const intensity = Math.pow(1 - normalizedDistance, 2.5) * 0.7; // Subtiler
+      const intensity = Math.pow(1 - normalizedDistance, 2.2); // Stärker und weniger Falloff
       const angle = Math.atan2(dy, dx);
       const pushAngle = angle + Math.PI;
-      const offset = intensity * maxOffset * 0.5;
+      const offset = intensity * maxOffset * 0.85; // Deutlich sichtbarer
       
       logo.style.setProperty('--logo-warp-intensity', intensity.toFixed(3));
       logo.style.setProperty('--logo-warp-angle', ((angle * 180 / Math.PI) + 'deg'));
