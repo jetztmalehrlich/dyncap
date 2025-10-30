@@ -84,8 +84,69 @@ if (logo) {
       setAberration(0, 0);
     });
   } else {
-    logo.dataset.static = 'true';
-    setAberration(0, 0);
+    // Mobile: Effekt beim Scrollen und Touch
+    let lastScrollY = window.scrollY;
+    let scrollVelocity = 0;
+    let scrollTimeout;
+    
+    const updateScrollEffect = () => {
+      const rect = logo.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      
+      // Effekt basierend auf Scroll-Geschwindigkeit
+      const intensity = Math.min(Math.abs(scrollVelocity) / 50, 1);
+      const direction = scrollVelocity > 0 ? 1 : -1;
+      
+      const offset = intensity * maxOffset * 0.6; // Etwas subtiler auf Mobile
+      
+      logo.style.setProperty('--logo-warp-intensity', intensity.toFixed(3));
+      logo.style.setProperty('--logo-warp-angle', (direction * 90) + 'deg');
+      
+      setAberration(0, offset * direction);
+      
+      // Reset nach kurzer Zeit
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        logo.style.setProperty('--logo-warp-intensity', '0');
+        setAberration(0, 0);
+      }, 150);
+    };
+    
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      scrollVelocity = currentScrollY - lastScrollY;
+      lastScrollY = currentScrollY;
+      
+      requestAnimationFrame(updateScrollEffect);
+    }, { passive: true });
+    
+    // Touch-basierter Effekt
+    let touchStart = { x: 0, y: 0 };
+    
+    window.addEventListener('touchstart', event => {
+      if (event.touches.length > 0) {
+        touchStart.x = event.touches[0].clientX;
+        touchStart.y = event.touches[0].clientY;
+      }
+    }, { passive: true });
+    
+    window.addEventListener('touchmove', event => {
+      if (event.touches.length > 0) {
+        active = true;
+        pointer.x = event.touches[0].clientX;
+        pointer.y = event.touches[0].clientY;
+        queue();
+      }
+    }, { passive: true });
+    
+    window.addEventListener('touchend', () => {
+      setTimeout(() => {
+        active = false;
+        setAberration(0, 0);
+        logo.style.setProperty('--logo-warp-intensity', '0');
+      }, 200);
+    }, { passive: true });
   }
 
   if (document.fonts && document.fonts.ready) {
