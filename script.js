@@ -84,68 +84,78 @@ if (logo) {
       setAberration(0, 0);
     });
   } else {
-    // Mobile: Effekt beim Scrollen und Touch
-    let lastScrollY = window.scrollY;
-    let scrollVelocity = 0;
-    let scrollTimeout;
+    // Mobile: Touch-basierter Effekt
+    let touchActive = false;
+    let touchRAF = 0;
     
-    const updateScrollEffect = () => {
+    const updateTouch = () => {
+      touchRAF = 0;
+      if (!touchActive) return;
+      
       const rect = logo.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
+      const dx = pointer.x - cx;
+      const dy = pointer.y - cy;
+      const distance = Math.hypot(dx, dy);
       
-      // Effekt basierend auf Scroll-Geschwindigkeit
-      const intensity = Math.min(Math.abs(scrollVelocity) / 50, 1);
-      const direction = scrollVelocity > 0 ? 1 : -1;
+      if (distance > maxDistance) {
+        setAberration(0, 0);
+        logo.style.setProperty('--logo-warp-intensity', '0');
+        return;
+      }
       
-      const offset = intensity * maxOffset * 0.6; // Etwas subtiler auf Mobile
+      const normalizedDistance = distance / maxDistance;
+      const intensity = Math.pow(1 - normalizedDistance, 2.5) * 0.7; // Subtiler
+      const angle = Math.atan2(dy, dx);
+      const pushAngle = angle + Math.PI;
+      const offset = intensity * maxOffset * 0.5;
       
       logo.style.setProperty('--logo-warp-intensity', intensity.toFixed(3));
-      logo.style.setProperty('--logo-warp-angle', (direction * 90) + 'deg');
+      logo.style.setProperty('--logo-warp-angle', ((angle * 180 / Math.PI) + 'deg'));
       
-      setAberration(0, offset * direction);
-      
-      // Reset nach kurzer Zeit
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        logo.style.setProperty('--logo-warp-intensity', '0');
-        setAberration(0, 0);
-      }, 150);
+      setAberration(
+        Math.cos(pushAngle) * offset,
+        Math.sin(pushAngle) * offset
+      );
     };
     
-    window.addEventListener('scroll', () => {
-      const currentScrollY = window.scrollY;
-      scrollVelocity = currentScrollY - lastScrollY;
-      lastScrollY = currentScrollY;
-      
-      requestAnimationFrame(updateScrollEffect);
-    }, { passive: true });
-    
-    // Touch-basierter Effekt
-    let touchStart = { x: 0, y: 0 };
+    const queueTouch = () => {
+      if (!touchRAF) touchRAF = requestAnimationFrame(updateTouch);
+    };
     
     window.addEventListener('touchstart', event => {
       if (event.touches.length > 0) {
-        touchStart.x = event.touches[0].clientX;
-        touchStart.y = event.touches[0].clientY;
+        touchActive = true;
+        pointer.x = event.touches[0].clientX;
+        pointer.y = event.touches[0].clientY;
+        queueTouch();
       }
     }, { passive: true });
     
     window.addEventListener('touchmove', event => {
-      if (event.touches.length > 0) {
-        active = true;
+      if (event.touches.length > 0 && touchActive) {
         pointer.x = event.touches[0].clientX;
         pointer.y = event.touches[0].clientY;
-        queue();
+        queueTouch();
       }
     }, { passive: true });
     
     window.addEventListener('touchend', () => {
-      setTimeout(() => {
-        active = false;
-        setAberration(0, 0);
-        logo.style.setProperty('--logo-warp-intensity', '0');
-      }, 200);
+      touchActive = false;
+      // Sanftes Ausblenden
+      let currentIntensity = parseFloat(logo.style.getPropertyValue('--logo-warp-intensity')) || 0;
+      const fadeOut = () => {
+        currentIntensity *= 0.85;
+        if (currentIntensity > 0.01) {
+          logo.style.setProperty('--logo-warp-intensity', currentIntensity.toFixed(3));
+          requestAnimationFrame(fadeOut);
+        } else {
+          logo.style.setProperty('--logo-warp-intensity', '0');
+          setAberration(0, 0);
+        }
+      };
+      fadeOut();
     }, { passive: true });
   }
 
